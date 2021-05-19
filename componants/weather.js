@@ -2,25 +2,42 @@ const weather = require('../assets/weather.json');
 const superagent = require('superagent');
 require('dotenv').config();
 
+let cache = require('./cache');
+
 const WEATHER_BIT_KEY = process.env.WEATHER_BIT_KEY;
 
-const handelWeather = (req, res) => {
+
+const getweatherData = ('/weather', (req, res) => {
 
   try {
-    const weatherBitUrl = `https://api.weatherbit.io/v2.0/forecast/daily?Key=${WEATHER_BIT_KEY}&lat=${req.query.lat}&lon=${req.query.lon}`;
-    console.log(req.query);
-    superagent.get(weatherBitUrl).then(weatherBitData => {
+    const key = 'weather-' + req.query.lat + req.query.lon;
+    const parameterts = {
+      key: WEATHER_BIT_KEY,
+      lat: req.query.lat,
+      lon: req.query.lon
+    };
 
-      const dataArray = weatherBitData.body.data.map(data => new Weather(data));
-      res.send(dataArray);
-    });
+    if (cache[key]) {
+      res.send(cache[key]);
+
+    } else {
+
+      const weatherBitUrl = `https://api.weatherbit.io/v2.0/forecast/daily`;
+
+      superagent.get(weatherBitUrl).query(parameterts).then(weatherBitData => {
+        const dataArray = weatherBitData.body.data.map(data => new Weather(data));
+        cache[key] = dataArray;
+        res.send(dataArray);
+
+      });
+    }
 
   } catch (error) {
-
-    const dataArray = weather.data.map(result => new Weather(result));
+    const dataArray = weather.data.map(data => new Weather(data));
     res.send(dataArray);
   }
-};
+
+});
 
 
 class Weather {
@@ -30,4 +47,4 @@ class Weather {
   }
 }
 
-module.exports = handelWeather;
+module.exports = getweatherData;

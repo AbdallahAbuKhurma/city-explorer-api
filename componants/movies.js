@@ -2,6 +2,7 @@ const MOVIE_API_KEY = process.env.MOVIE_API_KEY;
 const superagent = require('superagent');
 require('dotenv').config();
 
+let cache = require('./cache');
 
 class Movie {
   constructor(movies) {
@@ -11,32 +12,40 @@ class Movie {
     this.avgVotes = movies.average_votes;
     this.totalVotes = movies.total_votes;
     this.popularity = movies.popularity;
+    this.released = movies.released_on;
+
   }
 }
 
-const handelMovies = (req, res) => {
+const getMoviesData = (req, res) => {
+
   try {
-    let queryValue = req.query.searchQuery;
+    const queryVal = req.query.searchQuery;
     const moviesUrlData = `https://api.themoviedb.org/3/search/movie`;
 
     const queryParameters = {
-      api_key: MOVIE_API_KEY, query: req.query.searchQuery
+      api_key: MOVIE_API_KEY,
+      query: req.query.searchQuery
     };
 
+    if (cache[queryVal] !== undefined) {
+      res.send(cache[queryVal]);
 
-    superagent.get(moviesUrlData).query(queryParameters).then(moviesList => {
-      if (queryValue !== undefined) {
-        res.send(queryValue);
-      } else {
-        const moviesArr = moviesList.body.results.map(value => new Movie(value));
-        queryValue = moviesArr;
-        res.send(moviesArr);
-      }
-    });
+    } else {
 
+      superagent.get(moviesUrlData).query(queryParameters).then(moviesData => {
+        const moviesArray = moviesData.body.results.map(value => new Movie(value));
+
+        cache[queryVal] = moviesArray;
+
+        res.send(moviesArray);
+      }).catch(console.error);
+
+    }
   } catch (error) {
     res.send(error);
   }
 };
 
-module.exports = handelMovies;
+
+module.exports = getMoviesData;
